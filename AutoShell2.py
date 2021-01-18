@@ -272,6 +272,9 @@ class LoopDevices:
 
         self.ProcessOutput()
 
+        for x in x :
+            
+
         
 
 
