@@ -1,1 +1,1 @@
-sh clo
+sh ip ro 
