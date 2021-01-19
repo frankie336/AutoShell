@@ -183,7 +183,10 @@ class Channel(object):
         is_in_user_exec = True if re.search(exec_promt, self.mode, re.MULTILINE) else False
 
 
-
+        """
+        To handle cisco enable mode uncomment this block of code
+        """
+        """
         if not self.initialized:
           if is_in_user_exec == True:
               while True:
@@ -197,14 +200,13 @@ class Channel(object):
                   if mode_select=='n':
                       break
           else:
-              pass 
+              pass
+        """ 
 
         
         
 
         
-
-
 
         self.data = ''
 
@@ -274,7 +276,7 @@ class LoopDevices:
         self.host_names = []
 
         for i in range(self.host_len):
-             e = self.find_host.search(self.test[i][i][1])
+             e = self.find_host.search(self.read_out[i][i][0])
              self.host_names.append(e.group())
 
         
@@ -285,12 +287,19 @@ class LoopDevices:
         
         
         for i in range(self.host_len):
-            self.diag =''.join(str(self.test[i][i][1]))
+            self.diag=self.read_out[0][i]
+            #self.diag =''.join(str(self.read_out[i][i]))
             print ('@@@@@@@@',self.diag)
+            with open(self.host_names[i]+'_output.txt', 'w') as f:
+                for item in self.diag:
+                    f.write("%s\n" % item)
 
-            f = open(str(self.host_names[i])+'_output.txt', 'wt', encoding='utf-8')
-            f.write(self.diag)
-            
+
+
+       
+   
+       
+
 
           
             
@@ -324,7 +333,7 @@ class LoopDevices:
             self.output[i].append(results)
 
        
-        self.test = self.output
+        self.read_out = self.output
         
 
 

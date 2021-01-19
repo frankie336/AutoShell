@@ -1,5 +1,3 @@
-sh ip int brie
-Interface                  IP-Address      OK? Method Status                Protocol
-FastEthernet0/0            172.19.1.251    YES NVRAM  up                    up      
-GigabitEthernet1/0         172.16.129.55   YES NVRAM  up                    up      
+sh clo
+*20:18:51.582 UTC Tue Jan 19 2021
 R1>
