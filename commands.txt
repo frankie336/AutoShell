@@ -1,6 +1,2 @@
 terminal length 0
-conf t
-int GigabitEthernet1/0
-no shutdown
-end
-wr
+sh ip int brie

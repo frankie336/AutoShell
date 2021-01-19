@@ -177,13 +177,7 @@ class Channel(object):
         """
         self.mode  =  m.group()# A capture group for the current mode of the cli
         
-        """
-        Searching for the hostname of the device:
-        """
-        host_pattern = r'(.*>)|(.*#)'
-        self.find_host = re.compile(host_pattern)
-        e = self.find_host.search(self.data)
-        print('@@@@@@@@@@@@',e)
+       
 
 
         self.send_next()
@@ -272,15 +266,43 @@ class LoopDevices:
         self.output = [[] for _ in range(self.host_len)]
 
 
+        with open("commands.txt") as file:
+             self.commands = [line.strip() for line in file]
+
+
     def ProcessOutput(self):
+
+
+        """
+        Searching for the hostname of the device:
+        """
+        host_pattern = r'(.*>)|(.*#)'
+        self.find_host = re.compile(host_pattern)
+        
+        
+        self.host_names = []
+
+        for i in range(self.host_len):
+             e = self.find_host.search(self.test[i][i][1])
+             self.host_names.append(e.group())
+
+        
+        remove = removetable = str.maketrans('', '', '>')
+        self.host_names = [s.translate(remove) for s in self.host_names]
+        
+             
+        
         
         for i in range(self.host_len):
             self.diag =''.join(str(self.test[i][i][1]))
-            print (self.diag)
-            
-            f = open('output.txt', 'wt', encoding='utf-8')
-            f.write(self.diag)
+            print ('@@@@@@@@',self.diag)
 
+            f = open(str(self.host_names[i])+'_output.txt', 'wt', encoding='utf-8')
+            f.write(self.diag)
+            
+
+          
+            
 
 
         
@@ -295,9 +317,7 @@ class LoopDevices:
         pat1 = [r'\S+>$',r'\S+#$']
         prompt_pattern =  re.compile( '|'.join(pat1))
         init_commands = ['set cli scripting-mode on\n', 'terminal length 0\n']
-        commands = ['terminal length 0','sh ip int brie']
-        
-       
+        commands = self.commands
         host = self.hosts
         
         """
@@ -334,8 +354,3 @@ if __name__ == "__main__":
  
     
      
-
-
-      #vlandat =''.join(results)
-      #print(results)
-

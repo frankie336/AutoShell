@@ -1,0 +1,5 @@
+sh ip int brie
+Interface                  IP-Address      OK? Method Status                Protocol
+FastEthernet0/0            172.19.1.253    YES manual up                    up      
+GigabitEthernet1/0         unassigned      YES unset  administratively down down    
+R3>
