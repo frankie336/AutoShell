@@ -5,9 +5,9 @@ Created on Mon Jan 11 20:08:27 2021
 
 @author: Francis Neequaye
          francis.neequaye@gmail.com
-
-Small tool that sync the VLAN’s on any given machine with database table.
 """
+
+
 import os 
 import logging
 import socketserver
@@ -88,28 +88,22 @@ class Channel(object):
         self.initialized = False
 
     def run(self):
-        """
-        This is what we call do actually connect and start the event loop
-        """
-        # Establish the SSH connection
+  
         self.ssh.connect(self.host, username=self.username,
                          password=self.password,look_for_keys=False)
 
-        # Create an SSH shell descriptor. This is how we're going to interact
-        # with the remote device.
+      
         shell = self.ssh.invoke_shell()
         shell.settimeout(0.0)
         self.shell = shell
 
-        # Turn the list of commands into an iterator, so we know when we've run
-        # out of commands
+      
         self.cmditer = iter(self.commands)
 
-        # Establish the data buffer we'll use to store output between commands
+      
         self.data = ''
 
-        # And start the event loop to store the results of the commands and
-        # return them when we're done.
+ 
         results = self.interact()
         return results
 
@@ -117,39 +111,36 @@ class Channel(object):
         """Interact with the device using the SSH shell."""
         shell = self.shell
 
-        # Start an infinite while loop, and use the select.select async I/O
-        # handler to detect when data has been received by the SSH shell.
+   
         while True:
-            # The ``r`` variable names the object that has received data. See:
-            # http://docs.python.org/2/library/select.html#select.select
+         
             r, w, e = select.select([shell], [], [])
-            # If 'shell' has received data, try to retreive it:
+         
             if shell in r:
-                #log.debug("HEY LET'S DO SOMETHING WITH SHELL")
+            
                 try:
-                    # Fetch 1K off the socket.
+                 
                     bytes = shell.recv(1024)
 
-                    # If it's no data, we're done. 
+                  
                     if len(bytes) == 0:
                         break
                     
-                    # Try to process the data we received.
+                   
                     self.data_received(bytes)
 
-                # If we timeout or get an error, log it and carry on.
+               
                 except (socket.timeout, socket.error) as err:
                     log.error(str(err))
 
-            # If the socket has not received any data after we sent somethign,
-            # disconnect.
+          
             else:
                 break
 
-        # The explicit call to disconnect
+       
         shell.close()
 
-        # And finally return the output of the results.
+       
         return self.results
 
     def data_received(self, bytes):
@@ -338,10 +329,6 @@ class LoopDevices:
 
 
         
-
-    
-
-               
 
 
 if __name__ == "__main__":
