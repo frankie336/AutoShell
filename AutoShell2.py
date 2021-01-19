@@ -233,19 +233,39 @@ class Channel(object):
 
 class LoopDevices:
     def __init__(self):
-    
+        
+        """
+        - Open the hosts.txt file and read each line into a list
+        -  Make the list an object in this constructor function
+        - Make the length of the self.hosts list an object 
+        """
         with open("hosts.txt") as file:
              self.hosts = [line.strip() for line in file]
 
         self.host_len = len(self.hosts)
+        
+        """
+        The Number of nested lists made is now tied to
+        the length of the self.hosts list  
+        """
         self.output = [[] for _ in range(self.host_len)]
 
+
     def ProcessOutput(self):
+        
+        for i in range(self.host_len):
+            self.diag =''.join(str(self.test[i][1][1]))
+            print (self.diag)
+            
+            f = open('output.txt', 'wt', encoding='utf-8')
+            f.write(self.diag)
 
-        print(self.output)
 
 
 
+ 
+
+        
         
     def main(self):
 
@@ -263,17 +283,31 @@ class LoopDevices:
         
        
         host = self.hosts
-
+        
+        """
+        1. Loop the following:
+         - SSH Connect connect to each device in the hosts.txt file
+         - Append the output of commands and diagnostics to the next nested 
+         list in self.output, using the [i]index in the range loop
+        """
         for i in range(self.host_len):
          for x in host:
             c = Channel(x, commands, creds, prompt_pattern, init_commands)
             results = c.run()
             self.output[i].append(results)
 
-        self.ProcessOutput()
+       
 
-        for x in x :
-            
+        self.test = self.output
+        
+
+
+        
+
+    
+
+        
+
 
         
 
@@ -281,6 +315,7 @@ class LoopDevices:
 if __name__ == "__main__":
     p1 = LoopDevices()
     p1.main()
+    p1.ProcessOutput()
     
      
      
