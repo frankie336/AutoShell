@@ -153,54 +153,76 @@ class Channel(object):
         return self.results
 
     def data_received(self, bytes):
-        """
-        This is what we do when data is received from the socket.
-        :param bytes:
-            Bytes that are received.
-        """
-        # This is our buffer. Until we get a result we want, we keep appending
-        # bytes to the data buffer.
+     
         log.debug('Got bytes: %r' % bytes)
         self.data += bytes.decode(encoding='UTF-8')
         log.debug(' Buffered: %r' % self.data)
 
-        # Check if the prompt pattern matches. Return None if it doesn't so the
-        # event loop continues to try to receive data. 
-        # 
-        # Basicaly this means:
-        # - Loop until the prompt matches
-        # - Trim off the prompt
-        # - Store the buffer as the result of the last command sent
-        # - Zero out the buffer
-        # - Rinse/repeat til all commands are sent and results stored
+
         m = self.prompt.search(self.data)
         if not m:
             return None
         log.debug('STATE: prompt %r' % m.group())
 
-        # The prompt matched! Strip the prompt from the match result so we get
-        # the data received withtout the prompt. This is our result.
-        # 
-        result = self.data[:m.start()]
-        result = result[result.find('\n')+1:]
+        
+        result = self.data
+        #result = self.data[:m.start()]
+        #result = result[result.find('\n')+1:]
 
-        # Only keep results once we've started sending commands
+      
         if self.initialized:
             self.results.append(result)
+        
+        """
+        """
+        self.mode  =  m.group()# A capture group for the current mode of the cli
+        
+        """
+        Searching for the hostname of the device:
+        """
+        host_pattern = r'(.*>)|(.*#)'
+        self.find_host = re.compile(host_pattern)
+        e = self.find_host.search(self.data)
+        print('@@@@@@@@@@@@',e)
 
-        #time.sleep(.5)
-        # And send the next command in the stack.
+
         self.send_next()
 
     def send_next(self):
+
         """
-        Send the next command in the command stack.
+        If the device is sitting at user exec mode 
+        run these commands to bring it int enable mode
         """
-        # We're sending a new command, so we zero out the data buffer.
+        exec_promt = '>'
+        is_in_user_exec = True if re.search(exec_promt, self.mode, re.MULTILINE) else False
+
+
+
+        if not self.initialized:
+          if is_in_user_exec == True:
+              while True:
+                  mode_select = input('Cisco User exec mode sensed. Press "y" to enter enable mode or "n" to continue in user exec mode: ')
+                  if mode_select =='y':
+                      self.shell.send('enable\n')
+                      time.sleep(.5)
+                      self.shell.send('cisco\n')
+                      break
+
+                  if mode_select=='n':
+                      break
+          else:
+              pass 
+
+        
+        
+
+        
+
+
+
         self.data = ''
 
-        # Check if we can safely initialize. This is a chance to do setup, such
-        # as turning off console paging, or changing up CLI settings. 
         if not self.initialized:
             if self.init_commands:
                 next_init = self.init_commands.pop(0)
@@ -210,15 +232,14 @@ class Channel(object):
                 log.debug('Successfully initialized for command execution')
                 self.initialized = True
 
-        # Try to fetch the next command in the stack. If we're out of commands,
-        # close the channel and disconnect.
+       
         try:
             next_command = self.cmditer.__next__() # Get the next command
         except StopIteration:
-            self.close() # Or disconnect
+            self.close() 
             return None
 
-        # Try to send the next command
+      
         if next_command is None:
             self.results.append(None) # Store a null command w/ null result
             self.send_next() # Fetch the next command
@@ -254,7 +275,7 @@ class LoopDevices:
     def ProcessOutput(self):
         
         for i in range(self.host_len):
-            self.diag =''.join(str(self.test[i][1][1]))
+            self.diag =''.join(str(self.test[i][i][1]))
             print (self.diag)
             
             f = open('output.txt', 'wt', encoding='utf-8')
@@ -262,15 +283,10 @@ class LoopDevices:
 
 
 
-
- 
-
         
         
     def main(self):
 
-
-        
         username = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT USERNAME
         password = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT PASSWORD
         creds = (username, password)
@@ -297,7 +313,6 @@ class LoopDevices:
             self.output[i].append(results)
 
        
-
         self.test = self.output
         
 
@@ -306,10 +321,7 @@ class LoopDevices:
 
     
 
-        
-
-
-        
+               
 
 
 if __name__ == "__main__":

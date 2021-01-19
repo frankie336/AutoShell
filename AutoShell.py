@@ -123,7 +123,8 @@ class Channel:
             self.results.append(result)
             
         
-        self.mode  =  m.group()
+        self.mode  =  m.group()# A capture group for the current mode of the cli
+        
         self.send_next()
 
 
