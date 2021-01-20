@@ -15,7 +15,7 @@ import re
 import time
 import socket
 import pandas as pd
-
+import datetime
 
 try:
     import paramiko
@@ -255,11 +255,43 @@ class LoopDevices:
 
 
     def ProcessOutput(self):
-         
+        
+        time_stamp = (str(datetime.datetime.now()))
+        
+        """
+        The failed_hosts.txt file will store a list of IP's that
+        Paramiko failed to successfully connect to for whatever reason
+        """
         if len(self.failed_hosts)>0:
+            
+            f = open('failed_hosts.txt', 'a')
+            f.write(time_stamp+' : Unable to connected to the following hosts on port 22:\n')
+            f.close()
+
+            with open('failed_hosts.txt', 'a') as f:
+                for item in self.failed_hosts:
+                 f.write("%s\n" % item)
+
+            
+            
+        
+        else:
+            pass
+        
+        
+        """
+        If the len of the failed hosts list is equal to the len
+        of the host list stop execution since none in the list 
+        can successfully connect
+        """
+        if len(self.failed_hosts) == self.host_len:
+            return None
+        else:
+            pass
+
+            
 
         
-
 
 
         """
@@ -294,8 +326,8 @@ class LoopDevices:
         
     def main(self):
 
-        username = 'cisci'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT USERNAME
-        password = 'cisci'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT PASSWORD
+        username = 'ciso'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT USERNAME
+        password = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT PASSWORD
         creds = (username, password)
 
 
@@ -315,15 +347,20 @@ class LoopDevices:
 
         self.failed_hosts = []
 
+        
+
         for i in range(self.host_len):
          for x in host:
             try:
                 c = Ssh(x, commands, creds, prompt_pattern, init_commands)
                 results = c.run()
                 self.output[i].append(results)
-            except:
+            except Exception as e:
+                print(e)
                 self.failed_hosts.append(x)
                 self.failed_hosts = pd.unique(self.failed_hosts).tolist()
+               
+
 
 
 
