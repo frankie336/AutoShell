@@ -7,7 +7,7 @@ Created on Mon Jan 11 20:08:27 2021
          francis.neequaye@gmail.com
 """
 
-
+import sys
 import os 
 import logging
 import socketserver
@@ -231,11 +231,13 @@ class LoopDevices:
         
         """
         - Open the hosts.txt file and read each line into a list
+        - Remove any blank lines that may mistakenly be included
         -  Make the list an object in this constructor function
         - Make the length of the self.hosts list an object 
         """
         with open("hosts.txt") as file:
              self.hosts = [line.strip() for line in file]
+             self.hosts = [x for x in self.hosts if x != '']
 
         self.host_len = len(self.hosts)
         
@@ -253,32 +255,31 @@ class LoopDevices:
         with open("commands.txt") as file:
              self.commands = [line.strip() for line in file]
 
+        self.log_file = "Auto_Shell_log.log"
+
 
     def ProcessOutput(self):
-        
+
+
+
+        """
+        Collecting extra log data for:
+        1. Hosts that are unreachable on the given host address
+        """
+        failed_message = [' : Unable to connected to the following hosts on port 22:']
+
         time_stamp = (str(datetime.datetime.now()))
         
-        """
-        The failed_hosts.txt file will store a list of IP's that
-        Paramiko failed to successfully connect to for whatever reason
-        """
         if len(self.failed_hosts)>0:
-            
-            f = open('failed_hosts.txt', 'a')
-            f.write(time_stamp+' : Unable to connected to the following hosts on port 22:\n')
-            f.close()
-
-            with open('failed_hosts.txt', 'a') as f:
-                for item in self.failed_hosts:
-                 f.write("%s\n" % item)
-
-            
-            
-        
+            for x in self.failed_hosts:
+              f = open('Auto_Shell_log.log', 'a')
+              f.write(time_stamp+failed_message[0]+x+"\n")
+              f.close()
         else:
             pass
         
         
+
         """
         If the len of the failed hosts list is equal to the len
         of the host list stop execution since none in the list 
@@ -289,11 +290,7 @@ class LoopDevices:
         else:
             pass
 
-            
-
         
-
-
         """
         Searching for the hostname of the device:
         """
@@ -302,9 +299,9 @@ class LoopDevices:
         
         
         self.host_names = []
-
-        for i in range(self.host_len):
-             e = self.find_host.search(self.read_out[i][i][0])
+        
+        for x in self.live_hosts_index:
+             e = self.find_host.search(self.read_out[x][x][0])
              self.host_names.append(e.group())
 
         
@@ -312,21 +309,75 @@ class LoopDevices:
         self.host_names = [s.translate(remove) for s in self.host_names]
         
              
-        
-        
-        for i in range(self.host_len):
-            self.diag=self.read_out[0][i]
-            with open(self.host_names[i]+'_output.txt', 'w') as f:
+        """
+        Save the output of each device wih its own hostname for
+        the file name
+        """
+        for x in self.live_hosts_index:
+          for i in self.host_names:
+            self.diag=self.read_out[0][x]
+            with open(i+'_output.txt', 'w') as f:
                 for item in self.diag:
                     f.write("%s\n" % item)
 
+        
+
+    
+    def ParseTheLogs(self):
 
 
+        
+
+        try:
+            open_file = open(self.log_file)
+            log_read = open_file.read()
+            open_file.close()
+
+        except Exception as ex:
+            print("Cannot read log file, termninating")
+            sys.exit(1)
+
+        
+        adding_host_key =   re.findall(r"(.*)(Adding ssh-rsa host key(.*)\n)",
+                                  
+                                     log_read,
+                                     re.MULTILINE)
+
+        authentication_state =   re.findall(r"(.*)(Authentication \(password\) successful!(.*)\n)|(.*)(Authentication \(password\) failed(.*)\n)",
+                                  
+                                     log_read,
+                                     re.MULTILINE)
+
+        
+
+
+
+        self.len_host_key = len(adding_host_key)
+        self.len_auth_state = len(authentication_state)
+
+        print(self.len_host_key,self.len_auth_state)
+
+        adding_host_key = [item for t in adding_host_key for item in t]
+        authentication_state = [item for t in authentication_state for item in t]
+
+        print(adding_host_key)  
+
+
+        ip = r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$)"
+        
+        newlist = list(filter(ip.match, adding_host_key))
+        print(newlist)
+        
+
+       
+
+
+ 
 
         
     def main(self):
 
-        username = 'ciso'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT USERNAME
+        username = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT USERNAME
         password = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT PASSWORD
         creds = (username, password)
 
@@ -346,35 +397,35 @@ class LoopDevices:
 
 
         self.failed_hosts = []
-
-        
+        self.live_hosts_index = []
 
         for i in range(self.host_len):
-         for x in host:
+         for index, h in enumerate(host):   
             try:
-                c = Ssh(x, commands, creds, prompt_pattern, init_commands)
+                c = Ssh(h, commands, creds, prompt_pattern, init_commands)
                 results = c.run()
                 self.output[i].append(results)
+                self.live_hosts_index.append(index)
+                self.live_hosts_index = pd.unique(self.live_hosts_index).tolist()
             except Exception as e:
                 print(e)
-                self.failed_hosts.append(x)
+                self.failed_hosts.append(h)
                 self.failed_hosts = pd.unique(self.failed_hosts).tolist()
                
 
 
-
-
-       
         self.read_out = self.output
-
-
         
-        
+       
 
+
+
+    
 if __name__ == "__main__":
     p1 = LoopDevices()
     p1.main()
     p1.ProcessOutput()
+    p1.ParseTheLogs()
     
     
      
