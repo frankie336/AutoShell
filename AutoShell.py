@@ -324,9 +324,7 @@ class LoopDevices:
 
     
     def ParseTheLogs(self):
-
-
-        
+ 
 
         try:
             open_file = open(self.log_file)
@@ -343,37 +341,39 @@ class LoopDevices:
                                      log_read,
                                      re.MULTILINE)
 
-        authentication_state =   re.findall(r"(.*)(Authentication \(password\) successful!(.*)\n)|(.*)(Authentication \(password\) failed(.*)\n)",
+        authentication_state =   re.findall(r"(Authentication \(password\) successful!(.*)|Authentication \(password\) failed.(.*))",
                                   
                                      log_read,
                                      re.MULTILINE)
 
+
+        reachable_hosts =   re.findall(r".*?key for(.*)\:.*",
+                                  
+                                     log_read,
+                                     re.MULTILINE)
         
 
 
-
-        self.len_host_key = len(adding_host_key)
-        self.len_auth_state = len(authentication_state)
-
-        print(self.len_host_key,self.len_auth_state)
-
-        adding_host_key = [item for t in adding_host_key for item in t]
-        authentication_state = [item for t in authentication_state for item in t]
-
-        print(adding_host_key)  
-
-
-        ip = r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$)"
+        log_date =   re.findall(r".*?INF \[(.*)](.*)Authentication.*",
+                                
+                                   log_read,
+                                   re.MULTILINE)
         
-        newlist = list(filter(ip.match, adding_host_key))
-        print(newlist)
+        #log_date = [item for t in log_date  for item in t]
+        authentication_state = [item for t in authentication_state  for item in t]
+        authentication_state = [x for x in authentication_state if x != '']
+        log_date = [x[0] for x in log_date]
+        #log_date = [x for x in log_date if x != '']
         
+        
+        log_dict = {'Date':log_date,'Reachable_Hosts':reachable_hosts,'Authentication_State':authentication_state}
+        dflogs = pd.DataFrame.from_dict(log_dict)
+        print(dflogs)
+        dflogs.to_csv('Connection_Logs.csv', encoding='utf-8', index=False)
 
-       
 
 
- 
-
+        
         
     def main(self):
 
@@ -419,8 +419,6 @@ class LoopDevices:
        
 
 
-
-    
 if __name__ == "__main__":
     p1 = LoopDevices()
     p1.main()

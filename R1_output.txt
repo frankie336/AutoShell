@@ -10,10 +10,7 @@ Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
 
 Gateway of last resort is not set
 
-      172.16.0.0/16 is variably subnetted, 2 subnets, 2 masks
-C        172.16.129.0/24 is directly connected, GigabitEthernet1/0
-L        172.16.129.55/32 is directly connected, GigabitEthernet1/0
       172.19.0.0/16 is variably subnetted, 2 subnets, 2 masks
 C        172.19.1.0/24 is directly connected, FastEthernet0/0
-L        172.19.1.251/32 is directly connected, FastEthernet0/0
-R1>
+L        172.19.1.253/32 is directly connected, FastEthernet0/0
+R3>
