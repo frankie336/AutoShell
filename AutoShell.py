@@ -7,6 +7,14 @@ Created on Mon Jan 11 20:08:27 2021
          francis.neequaye@gmail.com
 """
 
+
+
+"""
+***IMPORTANT***
+Update the hosts.txt file with target host devices
+
+"""
+
 import sys
 import os 
 import logging
@@ -15,7 +23,7 @@ import re
 import time
 import socket
 import pandas as pd
-import datetime
+from datetime import datetime
 
 try:
     import paramiko
@@ -50,7 +58,7 @@ class Ssh(object):
     def __init__(self, host, commands, creds=None,
                  prompt_pattern=PROMPT_PATTERN, init_commands=None):
         if creds is None:
-            raise RuntimeError('You must supply username and password!!')
+            raise RuntimeError('Username or Password not correctly entered')
         
 
         
@@ -266,9 +274,11 @@ class LoopDevices:
         Collecting extra log data for:
         1. Hosts that are unreachable on the given host address
         """
-        failed_message = [' : Unable to connected to the following hosts on port 22:']
+        failed_message = [' : Unable to connect to the host on port 22:']
 
-        time_stamp = (str(datetime.datetime.now()))
+        time_stamp = datetime.now()
+        time_stamp = time_stamp.strftime("FAI [%Y%m%d-%H:%M:%S]")
+
         
         if len(self.failed_hosts)>0:
             for x in self.failed_hosts:
@@ -291,6 +301,20 @@ class LoopDevices:
             pass
 
         
+          
+        
+        """
+        Live host awarness
+        """
+        saved_files = []
+       
+
+        for x in self.live_hosts_index:
+            diag=self.read_out[x]
+            saved_files.append(diag)
+
+        len_saved = len(saved_files)
+
         """
         Searching for the hostname of the device:
         """
@@ -300,28 +324,35 @@ class LoopDevices:
         
         self.host_names = []
         
-        for x in self.live_hosts_index:
-             e = self.find_host.search(self.read_out[x][x][0])
-             self.host_names.append(e.group())
+      
+        for i in range(len_saved):
+           str1 = ''.join(str(saved_files[i][i][0]))
+           host = self.find_host.search(str1)
+           host = host.group()
+           self.host_names.append(host)
 
+         
         
-        remove = removetable = str.maketrans('', '', '>')
-        self.host_names = [s.translate(remove) for s in self.host_names]
+        remove = ['>','#']
+        pat =  '|'.join(remove)
+        self.host_names = [re.compile(pat).sub("", m) for m in self.host_names]
         
-             
+
         """
         Save the output of each device wih its own hostname for
         the file name
         """
-        for x in self.live_hosts_index:
-          for i in self.host_names:
-            self.diag=self.read_out[0][x]
-            with open(i+'_output.txt', 'w') as f:
-                for item in self.diag:
-                    f.write("%s\n" % item)
+        for i in range(len_saved):
+          with open(self.host_names[i]+'_output.txt', 'w') as f:
+            for item in saved_files[i]:
+                f.write(item[0])
 
-        
+       
+    
 
+
+                   
+  
     
     def ParseTheLogs(self):
  
@@ -358,6 +389,13 @@ class LoopDevices:
                                 
                                    log_read,
                                    re.MULTILINE)
+
+
+        #2021-01-22 20:11:11.666281 : Unable to connected to the following hosts on port 22:172.19.1.253
+        failed_connect =   re.findall(r"(FAI)(.*)(.*)( : )(Unable to connect to the host on port 22:)(.*)(.*)",
+                                
+                                   log_read,
+                                   re.MULTILINE)
         
         #log_date = [item for t in log_date  for item in t]
         authentication_state = [item for t in authentication_state  for item in t]
@@ -365,11 +403,31 @@ class LoopDevices:
         log_date = [x[0] for x in log_date]
         #log_date = [x for x in log_date if x != '']
         
+        """
+        Parsing the logs for failed connects
+        """
+        failed_connect0 = failed_connect
+        failed_connect1 = failed_connect
+        failed_connect2 = failed_connect
+        failed_date = failed_connect0 = [x[1] for x in failed_connect0]
+        failed_date = [re.compile(r'\[|\]').sub("", m) for m in failed_date]
+        failed_hosts = failed_connect1 = [x[5] for x in failed_connect1]
+        failed_message = failed_connect2 = [x[4] for x in failed_connect2]
         
+        
+        log_date = log_date+failed_date
+        reachable_hosts = reachable_hosts+failed_hosts
+        authentication_state = authentication_state+failed_message
+
+
+
         log_dict = {'Date':log_date,'Reachable_Hosts':reachable_hosts,'Authentication_State':authentication_state}
         dflogs = pd.DataFrame.from_dict(log_dict)
         print(dflogs)
         dflogs.to_csv('Connection_Logs.csv', encoding='utf-8', index=False)
+
+
+        
 
 
 
@@ -415,6 +473,9 @@ class LoopDevices:
 
 
         self.read_out = self.output
+
+        self.len_readout = len(self.read_out)
+        print(self.len_readout)
         
        
 
