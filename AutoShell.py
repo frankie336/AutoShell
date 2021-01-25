@@ -14,6 +14,8 @@ Created on Mon Jan 11 20:08:27 2021
 Update the hosts.txt file with target host devices
 
 """
+import time
+start_time = time.time()
 
 import sys
 import os 
@@ -44,7 +46,7 @@ import select
 
 
 
-
+read_out = []
 """
 An Interactive automated SSH Client:
  - Will connect to target device when triggered and run 
@@ -268,88 +270,38 @@ class LoopDevices:
 
     def ProcessOutput(self):
 
+        #start = time()
 
-
-        """
-        Collecting extra log data for:
-        1. Hosts that are unreachable on the given host address
-        """
-        failed_message = [' : Unable to connect to the host on port 22:']
-
-        time_stamp = datetime.now()
-        time_stamp = time_stamp.strftime("FAI [%Y%m%d-%H:%M:%S]")
-
-        
-        if len(self.failed_hosts)>0:
-            for x in self.failed_hosts:
-              f = open('Auto_Shell_log.log', 'a')
-              f.write(time_stamp+failed_message[0]+x+"\n")
-              f.close()
-        else:
-            pass
-        
-        
-
-        """
-        If the len of the failed hosts list is equal to the len
-        of the host list stop execution since none in the list 
-        can successfully connect
-        """
-        if len(self.failed_hosts) == self.host_len:
-            return None
-        else:
-            pass
-
-        
-          
-        
-        """
-        Live host awarness
-        """
-        saved_files = []
+        print(read_out[0])
        
-
-        for x in self.live_hosts_index:
-            diag=self.read_out[x]
-            saved_files.append(diag)
-
-        len_saved = len(saved_files)
-
-        """
-        Searching for the hostname of the device:
-        """
         host_pattern = r'(.*>)|(.*#)'
         self.find_host = re.compile(host_pattern)
-        
-        
-        self.host_names = []
-        
-      
-        for i in range(len_saved):
-           str1 = ''.join(str(saved_files[i][i][0]))
-           host = self.find_host.search(str1)
-           host = host.group()
-           self.host_names.append(host)
 
-         
-        
+        self.host_names = []
+
+        firstele = read_out[0][0]
+        host = self.find_host.search(firstele)
+        host = host.group()
+        self.host_names.append(host)
+
         remove = ['>','#']
         pat =  '|'.join(remove)
         self.host_names = [re.compile(pat).sub("", m) for m in self.host_names]
+        print(host,self.host_names)
+
+        
+        with open(self.host_names[0]+'_output.txt', 'w') as filehandle:
+            filehandle.writelines("%s\n" % place for place in read_out[0])
+
+
+        read_out.clear()
+        
+      
+        
         
 
-        """
-        Save the output of each device wih its own hostname for
-        the file name
-        """
-        for i in range(len_saved):
-          with open(self.host_names[i]+'_output.txt', 'w') as f:
-            for item in saved_files[i]:
-                f.write(item[0])
-
-       
-    
-
+        
+        
 
                    
   
@@ -431,64 +383,36 @@ class LoopDevices:
 
 
 
-        
-        
-    def main(self):
-
-        username = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT USERNAME
-        password = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT PASSWORD
-        creds = (username, password)
-
-
-        pat1 = [r'\S+>$',r'\S+#$']
-        prompt_pattern =  re.compile( '|'.join(pat1))
-        init_commands = ['set cli scripting-mode on\n', 'terminal length 0\n']
-        commands = self.commands
-        host = self.hosts
-        
-        """
-        1. Loop the following:
-         - SSH Connect connect to each device in the hosts.txt file
-         - Append the output of commands and diagnostics to the next nested 
-         list in self.output, using the [i]index in the range loop
-        """
-
-
-        self.failed_hosts = []
-        self.live_hosts_index = []
-
-        for i in range(self.host_len):
-         for index, h in enumerate(host):   
-            try:
-                c = Ssh(h, commands, creds, prompt_pattern, init_commands)
-                results = c.run()
-                self.output[i].append(results)
-                self.live_hosts_index.append(index)
-                self.live_hosts_index = pd.unique(self.live_hosts_index).tolist()
-            except Exception as e:
-                print(e)
-                self.failed_hosts.append(h)
-                self.failed_hosts = pd.unique(self.failed_hosts).tolist()
-               
-
-
-        self.read_out = self.output
-
-        self.len_readout = len(self.read_out)
-        print(self.len_readout)
-        
-       
-
-
 if __name__ == "__main__":
-    p1 = LoopDevices()
-    p1.main()
-    p1.ProcessOutput()
-    p1.ParseTheLogs()
+
+    pat1 = [r'\S+>$',r'\S+#$']
+    prompt_pattern =  re.compile( '|'.join(pat1))
+    init_commands = ['set cli scripting-mode on\n', 'terminal length 0\n']
+
+    username = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT USERNAME
+    password = 'cisco'#NEEDS TO BE SET TO THE APPROPRIATE DEVICE MANAGEMENT PASSWORD
+    creds = (username, password)
+
+    with open("hosts.txt") as file:
+             hosts = [line.strip() for line in file]
+             hosts = [x for x in hosts if x != '']
+
+    with open("commands.txt") as file:
+             commands = [line.strip() for line in file]
     
+    for x in hosts:
+        c = Ssh(x, commands, creds, prompt_pattern, init_commands)
+        results = c.run()
+
+        print(len(results))
+        read_out.append(results)
+        print(len(read_out))
+        p1 = LoopDevices()
+        p1.ProcessOutput()
+      
     
-     
-     
+print("--- %s seconds ---" % (time.time() - start_time))
+   
  
     
      

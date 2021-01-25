@@ -12,17 +12,17 @@ Gateway of last resort is not set
 
       172.19.0.0/16 is variably subnetted, 2 subnets, 2 masks
 C        172.19.1.0/24 is directly connected, FastEthernet0/0
-L        172.19.1.253/32 is directly connected, FastEthernet0/0
-R3>
+L        172.19.1.252/32 is directly connected, FastEthernet0/0
+R2>
 sh cdp nei
 Capability Codes: R - Router, T - Trans Bridge, B - Source Route Bridge
                   S - Switch, H - Host, I - IGMP, r - Repeater, P - Phone, 
                   D - Remote, C - CVTA, M - Two-port Mac Relay 
 
 Device ID        Local Intrfce     Holdtme    Capability  Platform  Port ID
-R1.www.flynn.com Fas 0/0            172              R    7206VXR   Fas 0/0
-R2.www.flynn.com Fas 0/0            142              R    7206VXR   Fas 0/0
-R3>
+R1.www.flynn.com Fas 0/0            174              R    7206VXR   Fas 0/0
+R3.www.flynn.com Fas 0/0            140              R    7206VXR   Fas 0/0
+R2>
 sh clock
-*15:56:53.363 UTC Mon Jan 25 2021
-R3>
+*15:56:50.851 UTC Mon Jan 25 2021
+R2>
