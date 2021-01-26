@@ -20,9 +20,9 @@ Capability Codes: R - Router, T - Trans Bridge, B - Source Route Bridge
                   D - Remote, C - CVTA, M - Two-port Mac Relay 
 
 Device ID        Local Intrfce     Holdtme    Capability  Platform  Port ID
-R1.www.flynn.com Fas 0/0            174              R    7206VXR   Fas 0/0
-R3.www.flynn.com Fas 0/0            140              R    7206VXR   Fas 0/0
+R1.www.flynn.com Fas 0/0            151              R    7206VXR   Fas 0/0
+R3.www.flynn.com Fas 0/0            174              R    7206VXR   Fas 0/0
 R2>
 sh clock
-*15:56:50.851 UTC Mon Jan 25 2021
+*13:29:37.959 UTC Tue Jan 26 2021
 R2>

@@ -301,11 +301,7 @@ class LoopDevices:
         
 
         
-        
 
-                   
-  
-    
     def ParseTheLogs(self):
  
 
@@ -409,6 +405,8 @@ if __name__ == "__main__":
         print(len(read_out))
         p1 = LoopDevices()
         p1.ProcessOutput()
+
+    p1.ParseTheLogs()
       
     
 print("--- %s seconds ---" % (time.time() - start_time))
