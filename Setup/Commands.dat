@@ -1,0 +1,4 @@
+show ver
+sh clock
+sh ip int brie
+sh cdp nei

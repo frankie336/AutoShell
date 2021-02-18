@@ -1,3 +1,0 @@
-sh ip ro
-sh cdp nei  
-sh clock
