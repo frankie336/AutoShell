@@ -1,4 +1,4 @@
-wn reload cause - suspect boot_data[BOOT_COUNT] 0x0, BOOT_COUNT 0, BOOTDATA 19
+
 
 
 
@@ -46,17 +46,17 @@ for c7200 bandwidth points oversubscription and usage guidelines.
 
 Configuration register is 0x2102
 
-R1>sh clock
-*20:15:16.043 UTC Thu Feb 18 2021
-R1>sh ip int brie
+R3>sh clock
+*12:23:07.659 UTC Fri Feb 19 2021
+R3>sh ip int brie
 Interface                  IP-Address      OK? Method Status                Protocol
-FastEthernet0/0            172.19.1.251    YES NVRAM  up                    up      
-GigabitEthernet1/0         172.16.129.55   YES NVRAM  up                    up      
-R1>sh cdp nei
+FastEthernet0/0            172.19.1.253    YES NVRAM  up                    up      
+GigabitEthernet1/0         unassigned      YES NVRAM  administratively down down    
+R3>sh cdp nei
 Capability Codes: R - Router, T - Trans Bridge, B - Source Route Bridge
                   S - Switch, H - Host, I - IGMP, r - Repeater, P - Phone, 
                   D - Remote, C - CVTA, M - Two-port Mac Relay 
 
 Device ID        Local Intrfce     Holdtme    Capability  Platform  Port ID
-R3.www.flynn.com Fas 0/0            128              R    7206VXR   Fas 0/0
-R2.www.flynn.com Fas 0/0            130              R    720
+R1.www.flynn.com Fas 0/0            171              R    7206VXR   Fas 0/0
+R2.www.flynn.com Fas 0/0            166              R    720

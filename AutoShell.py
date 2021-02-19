@@ -53,6 +53,7 @@ class ShellWork(object):
         self.cisco_Pexec = '#'
 
         self.username = username
+        self.password = password 
         
 
     
@@ -71,7 +72,7 @@ class ShellWork(object):
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(host, port=22, username='cisco', password='cisco', look_for_keys=False, timeout=None)
+            ssh.connect(host, port=22, username=self.username, password=self.password, look_for_keys=False, timeout=None)
             connection = ssh.invoke_shell()
             
         except Exception as e:
@@ -114,16 +115,11 @@ class ShellWork(object):
         
         prompt_level = (re.search(prompt0, file_output)).group(0)
 
-        if prompt_level == self.cisco_Uexec:
-           
-            hostname = (re.search(prompt1, file_output)).group().strip(prompt_level)
+          
+        hostname = (re.search(prompt1, file_output)).group().strip(prompt_level)
         
-        if prompt_level == self.cisco_Pexec:
-            
-            hostname = (re.search(self.prompt1, file_output)).group().strip(prompt_level)
-
-
-        
+       
+ 
         with open('output\\'+hostname + "-" + str(self.date_time) + ".txt", "w") as f:
             f.writelines(file_output[678:-19])#This is a custom number, may need to be changed
 
@@ -152,6 +148,7 @@ class ShellWork(object):
             
 if __name__ == "__main__": 
     username = "cisco"
+    password = "cisco"
     a = ShellWork()
     a.MultThreadConn()
     
