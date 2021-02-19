@@ -115,7 +115,6 @@ class ShellWork(object):
         
         prompt_level = (re.search(prompt0, file_output)).group(0)
 
-          
         hostname = (re.search(prompt1, file_output)).group().strip(prompt_level)
         
        
