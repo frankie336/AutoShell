@@ -25,7 +25,7 @@ import time
 from multiprocessing.pool import ThreadPool
 import re
 import datetime
-
+import psutil
 
 
 start = time.time()
@@ -45,7 +45,6 @@ class ShellWork(object):
 
         self.cisco_term_length = "terminal length 0\n"
 
-        self.threads = len(self.ips)
 
         self.date_time = datetime.datetime.now().strftime("%Y-%m-%d")
 
@@ -53,9 +52,10 @@ class ShellWork(object):
         self.cisco_Pexec = '#'
 
         self.username = username
-        self.password = password 
-        
+        self.password = password
 
+        self.count_threads = psutil.cpu_count(logical=True)#Count number of cores/threads in CPU
+         
     
                 
     def AutoShell(self,host):
@@ -137,7 +137,7 @@ class ShellWork(object):
         Hosts.dat file 
         """
 
-        THREADS = ThreadPool(self.threads)#Set the number of threads
+        THREADS = ThreadPool(self.count_threads)#Set the number of threads
         RESULTS = THREADS.map(self.AutoShell, self.ips)
         THREADS.close()
         
