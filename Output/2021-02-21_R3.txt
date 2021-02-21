@@ -1,4 +1,19 @@
-own reason
+
+R3>terminal length 0
+R3>show ver
+Cisco IOS Software, 7200 Software (C7200-ADVENTERPRISEK9-M), Version 15.2(4)M11, RELEASE SOFTWARE (fc2)
+Technical Support: http://www.cisco.com/techsupport
+Copyright (c) 1986-2016 by Cisco Systems, Inc.
+Compiled Sun 16-Oct-16 07:53 by prod_rel_team
+
+ROM: ROMMON Emulation Microcode
+BOOTLDR: 7200 Software (C7200-ADVENTERPRISEK9-M), Version 15.2(4)M11, RELEASE SOFTWARE (fc2)
+
+R3 uptime is 5 hours, 58 minutes
+System returned to ROM by unknown reload cause - suspect boot_data[BOOT_COUNT] 0x0, BOOT_COUNT 0, BOOTDATA 19
+System image file is "tftp://255.255.255.255/unknown"
+Last reload type: Normal Reload
+Last reload reason: Unknown reason
 
 
 
@@ -46,17 +61,18 @@ for c7200 bandwidth points oversubscription and usage guidelines.
 
 Configuration register is 0x2102
 
-R2>sh clock
-*15:04:32.079 UTC Fri Feb 19 2021
-R2>sh ip int brie
+R3>sh clock
+*00:52:45.970 UTC Sun Feb 21 2021
+R3>sh ip int brie
 Interface                  IP-Address      OK? Method Status                Protocol
-FastEthernet0/0            172.19.1.252    YES NVRAM  up                    up      
-GigabitEthernet1/0         unassigned      YES NVRAM  up                    up      
-R2>sh cdp nei
+FastEthernet0/0            172.19.1.253    YES NVRAM  up                    up      
+GigabitEthernet1/0         unassigned      YES NVRAM  administratively down down    
+R3>sh cdp nei
 Capability Codes: R - Router, T - Trans Bridge, B - Source Route Bridge
                   S - Switch, H - Host, I - IGMP, r - Repeater, P - Phone, 
                   D - Remote, C - CVTA, M - Two-port Mac Relay 
 
 Device ID        Local Intrfce     Holdtme    Capability  Platform  Port ID
-R1.www.flynn.com Fas 0/0            166              R    7206VXR   Fas 0/0
-R3.www.flynn.com Fas 0/0            143              R    720
+R1.www.flynn.com Fas 0/0            132              R    7206VXR   Fas 0/0
+R2.www.flynn.com Fas 0/0            138              R    7206VXR   Fas 0/0
+R3>
