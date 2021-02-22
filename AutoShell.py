@@ -1,25 +1,4 @@
-
-"""
-Created on Mon Jan 11 20:08:27 2021
-#! Python 3.8
-
-@author: Francis Neequaye
-         francis.neequaye@gmail.com
-"""
-
-"""
-Script Instructions 
-_____
-
-1.Enter the remote IP's addresses of 
-Cisco (or other) devices on each search
-of the Hosts.dat file
-
-2. Enter input commands on each line of
-the Commands.dat file 
-
-"""
-
+import abc 
 import paramiko
 import time
 from multiprocessing.pool import ThreadPool
@@ -28,41 +7,49 @@ import datetime
 import psutil
 import logging
 
-
-
-
 start = time.time()
 
-class AutoShellInterface:
-    def LoadDataToList(self, path: str, file_name: str) -> str:
-        """Load in files as lists."""
-        pass
+class FormalAutoShellInterface(metaclass=abc.ABCMeta):
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'load_data_source') and 
+                callable(subclass.load_data_source) and
+                hasattr(subclass, 'term_zero') and 
+                callable(subclass.term_zero) and
+                hasattr(subclass, 'find_host_name') and 
+                callable(subclass.find_host_name) or
+                NotImplemented)
 
-    
-    def SaveDataFromList(self, path: str, file_name: str) -> str:
-        """Save list elements as files"""
-        pass
+    @abc.abstractmethod
+    def load_data_source(self, path: str):
+        """Load in the data set"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def term_zero(self, device_id: str):
+        """Load in the data set"""
+        raise NotImplementedError
 
 
+    @abc.abstractmethod
+    def find_host_name(self, device_type: str):
+        """Load in the data set"""
+        raise NotImplementedError
 
 
-class ShellWork(AutoShellInterface):
-    
-    count_cores = psutil.cpu_count(logical=True)#Count number of cores/threads in CPU
-    
-    def __init__(self):
-
-        self.date_time = datetime.datetime.now().strftime("%Y-%m-%d")
+    @abc.abstractmethod
+    def save_list_output(self, path: str, str,list_name: str):
+        """Save output from a single list element"""
         
-        self.username = username
+        raise NotImplementedError
 
-        self.password = password
-        
 
-    def LoadDataToList(self, path: str, file_name: str) -> str:
-        """Overrides AutoShellInterface.SaveDataFromList()"""
+
+class LoadDataToList(FormalAutoShellInterface):
+ 
+    def load_data_source(self, path: str) -> str:
         
-        with open(path+file_name) as f:
+        with open(path) as f:
             lines = f.read().splitlines()
 
         lines = [string for string in lines if string != ""]#Remove possible empty lines
@@ -70,95 +57,20 @@ class ShellWork(AutoShellInterface):
 
 
     
-    def SaveDataFromList(self, path: str, file_name: str,
-                         list_name: str) -> str:
-        """Overrides AutoShellInterface.LoadDataToList()"""
+    def term_zero(self, device_id: str):
         
-        with open(path+str(self.date_time)+'_'+file_name+'.txt', "w") as f:
-            f.writelines(list_name)
-    
-
-
-
-    def SetUpCommands(self):
-
-
-        commands = self.LoadDataToList(path='SetUp\\',file_name='Commands.dat')
-
-        return commands 
-
-    
-    def TeminalZero(self):
-        
-        device = 'Cisco'
-
         term_zero_list = ['terminal length 0\n']
-
-        if device == 'Cisco':
-            
+    
+        if device_id == 'Cisco':
             terminal_length = term_zero_list[0]
             
             return terminal_length
 
-
-
-
-    def Connect(self,host_ip):
-
     
-        terminal_length = self.TeminalZero()
-        commands = self.SetUpCommands()
-        
-        """
-        -Attempt to connect to a remote host:
-        1. If the host is unreachable, print
-        the error and continue to the  next 
-        host 
-        """
-     
-
-        try:
-            ssh = paramiko.SSHClient()
-            
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            
-            ssh.connect(host_ip, port=22, username=self.username, password=self.password, look_for_keys=False, timeout=None)        
-            
-            channel = ssh.get_transport().open_session()
-            
-            channel.invoke_shell()
-        except Exception as e:
-            
-            print(host_ip,e.args)
-            
-            return
+    def find_host_name(self, device_id: str, search: str) -> str:
+        """Extract the host name of the device"""
         
 
-        channel.sendall(terminal_length)#Send terminal length zero command
-        time.sleep(.2)
-
-        """
-        Once a  connection is established:
-        1. send the shell input Commands
-        by looping the self.commands list
-        """
-        for x in commands:
-            channel.sendall(x+"\n")
-
-        time.sleep(.5)
-
-        self.shell_output = channel.recv(9999).decode(encoding='utf-8') #Receive buffer output
-
-        ssh.close()
-
-        return self.shell_output# Return to threads
-
-
-
-
-    def SaveToFile(self,files):
-        
-        
         """
         For Cisco devices
         __________________
@@ -167,33 +79,112 @@ class ShellWork(AutoShellInterface):
         from the hostname string 
         3. Save  
         """
+        
+        if device_id=='Cisco_IOS':
+
+            prompts = ['>','#']
+            look_behind_prompt = ['(.+)'+prompts[0],'(.+)'+prompts[1]]
+            hostname_pat =  re.compile( '|'.join(look_behind_prompt))
+            to_strip =  re.compile( '|'.join(prompts))
+
+            stripped = (re.search(to_strip, str(search))).group(0)
+            
+            hostname = (re.search(hostname_pat, str(search))).group(0).strip(stripped)
+
+            return hostname
 
 
-        mode_prompt_patterns = ['>','#']
+     
+    def save_list_output(self, path: str, list_name: str) -> str:
+        """Save output from a single list element"""
 
-        look_behind_prompt = ['(.+)'+mode_prompt_patterns[0],'(.+)'+mode_prompt_patterns[1]]
+        with open(path+'_'+self.date_time+'.txt', "w") as f:
+            f.writelines(list_name)
+     
+       
 
-        hostname_pat =  re.compile( '|'.join(look_behind_prompt))
-
-        to_strip =  re.compile( '|'.join(mode_prompt_patterns)) 
 
 
+
+class ChannelClass(LoadDataToList):
+    
+    count_cores = psutil.cpu_count(logical=True)#Count number of cores/threads in CPU
+
+    def __init__(self):
+
+        self.date_time = datetime.datetime.now().strftime("%Y-%m-%d")
+        self.username = username
+        self.password = password
+        
+
+    def SetUpCommands(self):
+
+        """
+        Basic method to open commands file
+        allowing for more sophisticated method in the future
+        """
+
+        commands = self.load_data_source(path='Setup\\Cisco_Commands.dat')
+
+        return commands
+
+    
+
+    
+    
+    def MakeConnection(self,host_ip):
+       
+        terminal_length = self.term_zero(device_id='Cisco')
+        commands = self.SetUpCommands()
+        
+        
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(host_ip, port=22, username=self.username, password=self.password, look_for_keys=False, timeout=None)        
+            channel = ssh.get_transport().open_session() 
+            channel.invoke_shell()
+        except Exception as e:
+            print(host_ip,e.args)
+            return
+
+
+        channel.sendall(terminal_length)#Send terminal length zero command
+        time.sleep(.2)
+
+        
+        """
+        Once a  connection is established:
+        1. send the shell input Commands
+        by looping the self.commands list
+        """
+        for x in commands:
+            channel.sendall(x+"\n")
+
+        time.sleep(.1)
+
+        shell_output = channel.recv(9999).decode(encoding='utf-8') #Receive buffer output
+
+        ssh.close()
+
+        return  shell_output
+
+    
+    
+    def SaveToFile(self,files):
+        
         
         for ele in files:
 
-            stripped = (re.search(to_strip, str(ele))).group(0) 
-
-            hostname = (re.search(hostname_pat, str(ele))).group().strip(stripped)
-
-            self.SaveDataFromList(path='Output\\',file_name=hostname,list_name=ele)
-
-            
-            print(hostname,'done',stripped)
+            hostname = self.find_host_name(device_id='Cisco_IOS',search=ele)    
+            save = self.save_list_output(path='Output\\'+hostname,list_name=ele)
+              
+            print('Done',hostname)
 
 
 
 
-    def MultThreadConn(self):
+    def MultiThreading(self):
         
         """
         The multiprocessing.pool module will spawn concurrent
@@ -203,35 +194,41 @@ class ShellWork(AutoShellInterface):
         Hosts.dat file 
         """
 
-        obj =  ShellWork()
+        obj =  ChannelClass()
 
 
-        loop_hosts = self.LoadDataToList(path='SetUp\\',file_name='Hosts.dat')
-
+        loop_hosts = self.load_data_source(path='Setup\\Hosts.dat')
+        
         THREADS = ThreadPool(obj.count_cores)#Set the number of threads
         
-        SHELL_OUT = THREADS.map(self.Connect, loop_hosts)
+        SHELL_OUT = THREADS.map(self.MakeConnection, loop_hosts)
 
-        #print(SHELL_OUT)        
-        
+     
         self.SaveToFile(SHELL_OUT)
 
 
         THREADS.close()
+        
+
+        
+    
+        
+
+    
+    
 
 
 
+   
 
 if __name__ == "__main__": 
     username = 'cisco'
-    password = 'cisco'
-    a = ShellWork()
-    a.MultThreadConn()
-    #a.SetUpCommands()
-    #a.SaveToFile()
-    
-    
+    password = 'cisco' 
+    a = ChannelClass()
+    a.MultiThreading()
+  
+   
 end = time.time()
 print(end - start)
+
     
-  
