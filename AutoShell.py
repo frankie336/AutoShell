@@ -1,3 +1,19 @@
+"""
+Created on Mon Jan 11 20:08:27 2021
+#! Python 3.8
+@author: Francis Neequaye
+         francis.neequaye@gmail.com
+"""
+
+"""
+Script Instructions 
+_____
+1.Enter the remote IP's addresses of 
+Cisco (or other) devices on each search
+of the Hosts.dat file
+2. Enter input commands on each line of
+the Commands.dat file 
+"""
 import abc 
 import paramiko
 import time
@@ -6,8 +22,10 @@ import re
 import datetime
 import psutil
 import logging
+import getpass
+import os
 
-start = time.time()
+start = time.time()#Temp timing
 
 class FormalAutoShellInterface(metaclass=abc.ABCMeta):
     @classmethod
@@ -17,29 +35,38 @@ class FormalAutoShellInterface(metaclass=abc.ABCMeta):
                 hasattr(subclass, 'term_zero') and 
                 callable(subclass.term_zero) and
                 hasattr(subclass, 'find_host_name') and 
-                callable(subclass.find_host_name) or
+                callable(subclass.find_host_name) and
+                hasattr(subclass, 'create_set_up') and 
+                callable(subclass.create_set_up) or
                 NotImplemented)
 
     @abc.abstractmethod
     def load_data_source(self, path: str):
-        """Load in the data set"""
+        """Load data to be read into list"""
         raise NotImplementedError
 
     @abc.abstractmethod
     def term_zero(self, device_id: str):
-        """Load in the data set"""
+        """The Command for to make terminal length zero"""
         raise NotImplementedError
 
 
     @abc.abstractmethod
     def find_host_name(self, device_type: str):
-        """Load in the data set"""
+        """Search for device hostname string and strip the prompt"""
         raise NotImplementedError
 
 
     @abc.abstractmethod
     def save_list_output(self, path: str, str,list_name: str):
-        """Save output from a single list element"""
+        """Save output from lists"""
+        
+        raise NotImplementedError
+
+
+    @abc.abstractmethod
+    def create_set_up(self, path: str ):
+        """If a SetUp file does not exist create it"""
         
         raise NotImplementedError
 
@@ -48,16 +75,26 @@ class FormalAutoShellInterface(metaclass=abc.ABCMeta):
 class LoadDataToList(FormalAutoShellInterface):
  
     def load_data_source(self, path: str) -> str:
+        """Load data to be read into list"""
+
+        EMPTY_FILE = 'Unable to process: The '+path+' file is empty'
         
         with open(path) as f:
             lines = f.read().splitlines()
 
+       
         lines = [string for string in lines if string != ""]#Remove possible empty lines
+
+        if len(lines) == 0:
+            print(EMPTY_FILE)
+              
+    
         return lines
 
 
     
     def term_zero(self, device_id: str):
+        """The Command for to make terminal length zero"""
         
         term_zero_list = ['terminal length 0\n']
     
@@ -68,7 +105,7 @@ class LoadDataToList(FormalAutoShellInterface):
 
     
     def find_host_name(self, device_id: str, search: str) -> str:
-        """Extract the host name of the device"""
+        """Search for device hostname string and strip the prompt"""
         
 
         """
@@ -96,14 +133,28 @@ class LoadDataToList(FormalAutoShellInterface):
 
      
     def save_list_output(self, path: str, list_name: str) -> str:
-        """Save output from a single list element"""
+        """Save output from  lists"""
 
         with open(path+'_'+self.date_time+'.txt', "w") as f:
             f.writelines(list_name)
+
+
+
+    
+    def create_set_up(self, path: str ):
+        """If the SetUp folder does not exist create it"""
+        
+        find_file = os.path.isfile(path)
+        
+        if find_file == False:
+            print(path+' does not exist, creating.')
+            file = open(path, 'w+')
+        
+
+
+      
+        
      
-       
-
-
 
 
 class ChannelClass(LoadDataToList):
@@ -117,12 +168,20 @@ class ChannelClass(LoadDataToList):
         self.password = password
         
 
+
+  
+
+        
+                
+
+    
     def SetUpCommands(self):
 
         """
         Basic method to open commands file
         allowing for more sophisticated method in the future
         """
+        self.create_set_up(path='Setup\\Cisco_Commands.dat')
 
         commands = self.load_data_source(path='Setup\\Cisco_Commands.dat')
 
@@ -135,13 +194,15 @@ class ChannelClass(LoadDataToList):
     def MakeConnection(self,host_ip):
        
         terminal_length = self.term_zero(device_id='Cisco')
+        
         commands = self.SetUpCommands()
+
         
         
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(host_ip, port=22, username=self.username, password=self.password, look_for_keys=False, timeout=None)        
+            ssh.connect(host_ip, port=22, username=self.username, password=password, look_for_keys=False, timeout=None)        
             channel = ssh.get_transport().open_session() 
             channel.invoke_shell()
         except Exception as e:
@@ -161,7 +222,7 @@ class ChannelClass(LoadDataToList):
         for x in commands:
             channel.sendall(x+"\n")
 
-        time.sleep(.1)
+        time.sleep(.1)#Time to wait to receive channel bytes
 
         shell_output = channel.recv(9999).decode(encoding='utf-8') #Receive buffer output
 
@@ -173,7 +234,11 @@ class ChannelClass(LoadDataToList):
     
     def SaveToFile(self,files):
         
-        
+        """
+        1.Extract the device hostname from channe shell_output
+        2. Save the channel output, Affixing the hostname to the
+        saved file  
+        """
         for ele in files:
 
             hostname = self.find_host_name(device_id='Cisco_IOS',search=ele)    
@@ -196,6 +261,7 @@ class ChannelClass(LoadDataToList):
 
         obj =  ChannelClass()
 
+        self.create_set_up(path='Setup\\Hosts.dat')
 
         loop_hosts = self.load_data_source(path='Setup\\Hosts.dat')
         
@@ -204,28 +270,21 @@ class ChannelClass(LoadDataToList):
         SHELL_OUT = THREADS.map(self.MakeConnection, loop_hosts)
 
      
-        self.SaveToFile(SHELL_OUT)
+        self.SaveToFile(SHELL_OUT)#Save output to file
 
 
         THREADS.close()
-        
-
-        
-    
-        
-
-    
-    
 
 
 
-   
-
+  
 if __name__ == "__main__": 
-    username = 'cisco'
-    password = 'cisco' 
+    username = 'cisco'#temp solution
+    password = 'cisco' #temp solution 
     a = ChannelClass()
     a.MultiThreading()
+   
+ 
   
    
 end = time.time()
