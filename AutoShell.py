@@ -105,7 +105,7 @@ class FormalAutoShellInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def uni_shell(self, host_ip: str,command_set: str ):
+    def uni_shell(self, host_ip: list,command_set: str ):
         """Univeral SSH conection"""
         raise NotImplementedError
         
@@ -213,7 +213,6 @@ class LoadDataToList(FormalAutoShellInterface):
     
     def find_ipv4(self, input_string: str ):
         """Search for ipv4"""
-        #pat = r"^\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}$"
 
         pat = r"\d\d?\d?\.\d\d?\d?\.\d\d?\d?\.\d\d?\d?"
         ipv4_address = re.findall(pat, input_string)
@@ -245,13 +244,13 @@ class LoadDataToList(FormalAutoShellInterface):
 
 
     
-    def uni_shell(self, host_ip: str,command_set: str,device_select: str ):
+    def uni_shell(self, host_ip: list,command_set: str,device_select: str ):
         """Univeral SSH conection"""
         
         terminal_length = self.term_zero(device_id=device_select)
         commands = self.load_data_source(path=command_set)
 
-
+        
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -281,7 +280,6 @@ class LoadDataToList(FormalAutoShellInterface):
         shell_output = channel.recv(9999).decode(encoding='utf-8') #Receive buffer output
 
 
-        
 
         ssh.close()
         return  shell_output
@@ -347,72 +345,88 @@ class ChannelClass(LoadDataToList):
     
 
     def ProcessNodeData(self):
-    
-        connect = self.uni_shell(host_ip=self.single_host,command_set='Setup\\Cisco_trouble.dat',device_select='Cisco')
-
-        mac_address = self.find_mac_addresses(input_string=connect)
-
-        interface = self.find_mac_interfaces(input_string=connect)
-
-        host_name = self.find_host_name(device_id='Cisco_IOS',search=connect)
-
-        ipv4_address = self.find_ipv4(input_string=connect)
         
-        print(connect)
-        print(mac_address,interface,host_name,ipv4_address)
+        
+        hosts = ['172.19.1.251']
 
-        return mac_address,interface,host_name,ipv4_address
+        all_macs_address, all_interfaces, all_ipv4_address, all_host_names = [],[],[],[]
+       
+       
+        for x in hosts:
+            connect = self.uni_shell(host_ip=x,command_set='Setup\\Cisco_trouble.dat',device_select='Cisco')
+            host_name = self.find_host_name(device_id='Cisco_IOS',search=str(connect))
+            mac_address = self.find_mac_addresses(input_string=str(connect))
+            interface = self.find_mac_interfaces(input_string=str(connect))
+            ipv4_address = self.find_ipv4(input_string=str(connect))
+            
+            all_macs_address.append(mac_address)
+            all_host_names.append(host_name)
+            all_interfaces.append(interface)
+            all_ipv4_address.append(ipv4_address)
+            
+            
+        return all_host_names,all_macs_address,all_interfaces,all_ipv4_address 
+            
+            
 
-
+        
 
     
 
     def DrawNodes(self):
 
-        mac_address,interface,host_name,ipv4_address= self.ProcessNodeData()
+        all_host_names,all_macs_address,all_interfaces,all_ipv4_address = self.ProcessNodeData()
+
+        mac_len = len(all_macs_address)
 
 
-        
-        G = nx.path_graph(0)
-        G.add_node(host_name)
+        G=nx.Graph()
+
+        G.add_node(all_host_names[0])
 
 
-    
-    
-        for i in range (len(mac_address)):
-            G.add_edges_from([(mac_address[i], interface[i])])
-
-        
-        for i in range (len(interface)):
-            G.add_edges_from([(host_name, interface[i])])
+        for i in range (len(all_interfaces[0])):
+            G.add_edges_from([(all_host_names[0], all_interfaces[0][i])])
 
 
-        for i in range (len(ipv4_address)):
-            G.add_edges_from([(mac_address[i], ipv4_address[i])])
-        
+        for i in range (len(all_macs_address[0])):
+            G.add_edges_from([(all_macs_address[0][i], all_interfaces[0][i])])
+
+
+        for i in range (len(all_macs_address[0])):
+            G.add_edges_from([(all_macs_address[0][i], all_ipv4_address[0][i])])
+
+            
         """
-        Set Colors:
-        Nodes = green
-        Edges = Blue
+        #Set Colors:
+        #Nodes = green
+        #Edges = Blue
         """
-        color_map = []
+        node_color_map = []
+        edge_color_map = ['Red']
+
 
         for node in G:
-            if node ==host_name:
-                color_map.append('green')
-            else:
-                color_map.append('blue')
+            if node ==all_host_names[0]:
+                node_color_map.append('green')
 
+            else:
+                node_color_map.append('blue')
+
+        nx.edge_connectivity(G)
+
+
+    
 
         random_pos = nx.random_layout(G, seed=42)
         pos = nx.spring_layout(G, pos=random_pos)
         plt.figure(3,figsize=(46,12)) 
         plt.subplot(121)
-        nx.draw(G, node_color=color_map, with_labels=True)
-        #nx.draw(G, with_labels=True, font_weight='bold')
-        
+        nx.draw(G, node_color=node_color_map,edge_color=edge_color_map, with_labels=True)
 
-   
+
+
+       
 
     
     
@@ -464,7 +478,8 @@ class ChannelClass(LoadDataToList):
     def main(self):
         
         #self.MultiThreading()
-        self.DrawNodes() 
+        self.DrawNodes()
+        #self.ProcessNodeData() 
 
         
 
@@ -472,7 +487,7 @@ class ChannelClass(LoadDataToList):
         
               
 if __name__ == "__main__": 
-    single_host = '172.19.1.251'
+    single_host = ['172.19.1.251']
     username = 'cisco'#Enter network device username temp solution
     password = 'cisco' #temp solution 
     a = ChannelClass()
