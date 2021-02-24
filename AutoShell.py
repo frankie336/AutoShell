@@ -24,6 +24,10 @@ import psutil
 import logging
 import getpass
 import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+
 
 start = time.time()#Temp timing
 
@@ -37,7 +41,15 @@ class FormalAutoShellInterface(metaclass=abc.ABCMeta):
                 hasattr(subclass, 'find_host_name') and 
                 callable(subclass.find_host_name) and
                 hasattr(subclass, 'create_set_up') and 
-                callable(subclass.create_set_up) or
+                callable(subclass.create_set_up) and
+                hasattr(subclass, 'find_interfaces') and 
+                callable(subclass.find_interfaces) and
+                hasattr(subclass, 'find_mac_addresses') and 
+                callable(subclass.find_mac_addresses) and
+                hasattr(subclass, 'uni_shell') and 
+                callable(subclass.uni_shell) and
+                hasattr(subclass, 'find_ipv4') and 
+                callable(subclass.find_ipv4) or
                 NotImplemented)
 
     @abc.abstractmethod
@@ -58,7 +70,7 @@ class FormalAutoShellInterface(metaclass=abc.ABCMeta):
 
 
     @abc.abstractmethod
-    def save_list_output(self, path: str, str,list_name: str):
+    def save_list_output(self, path: str, list_name: str):
         """Save output from lists"""
         
         raise NotImplementedError
@@ -69,6 +81,36 @@ class FormalAutoShellInterface(metaclass=abc.ABCMeta):
         """If a SetUp file does not exist create it"""
         
         raise NotImplementedError
+    
+
+    @abc.abstractmethod
+    def find_interfaces(self, input_string: str ):
+       """Search for Interfaces"""
+       raise NotImplementedError
+
+    @abc.abstractmethod
+    def find_mac_addresses(self, input_string: str ):
+        """Search for Mac addrress"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def find_ipv4(self, input_string: str ):
+        """Search for ipv4"""
+        raise NotImplementedError
+
+
+    @abc.abstractmethod
+    def find_mac_interfaces(self, input_string: str ):
+        """Search for Mac addrress interfaces"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def uni_shell(self, host_ip: str,command_set: str ):
+        """Univeral SSH conection"""
+        raise NotImplementedError
+        
+        
+        
 
 
 
@@ -149,12 +191,102 @@ class LoadDataToList(FormalAutoShellInterface):
         if find_file == False:
             print(path+' does not exist, creating.')
             file = open(path, 'w+')
-        
 
 
-      
+
+    
+    def find_interfaces(self, input_string: str ):
+        """Search for Interfaces"""
+   
+        all_interfaces = []    
         
-     
+        pat = r"^(interface (?P<intf_name>\S+))"
+        found_interfaces = re.finditer(pat,input_string,re.MULTILINE)
+
+        for intf_part in found_interfaces:
+            a = ((intf_part.group("intf_name")))
+            all_interfaces.append(a)
+
+        return all_interfaces
+
+
+    
+    def find_ipv4(self, input_string: str ):
+        """Search for ipv4"""
+        #pat = r"^\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}$"
+
+        pat = r"\d\d?\d?\.\d\d?\d?\.\d\d?\d?\.\d\d?\d?"
+        ipv4_address = re.findall(pat, input_string)
+        return ipv4_address
+
+ 
+    
+    def find_mac_addresses(self, input_string: str ):
+         """Search for Mac addrress"""
+         
+         pat = r"[0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4}"
+         mac_address =  re.findall(pat, input_string)
+         return mac_address
+
+
+    def find_mac_interfaces(self, input_string: str ):
+        """Search for Mac addrress interfaces"""
+        
+        pat = r"(?<=ARPA).*"
+        mac_int =  re.findall(pat, input_string)
+        mac_int = [x.strip(' ') for x in mac_int]#remove spaces
+
+        rem = ['\r']
+        pat =  '|'.join(rem)
+        mac_int= [re.compile(pat).sub("", m) for m in mac_int]  
+
+        return(mac_int)
+
+
+
+    
+    def uni_shell(self, host_ip: str,command_set: str,device_select: str ):
+        """Univeral SSH conection"""
+        
+        terminal_length = self.term_zero(device_id=device_select)
+        commands = self.load_data_source(path=command_set)
+
+
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(host_ip, port=22, username=self.username, password=password, look_for_keys=False, timeout=None)        
+            channel = ssh.get_transport().open_session() 
+            channel.invoke_shell()
+        except Exception as e:
+            print(host_ip,e.args)
+            return
+
+        channel.sendall(terminal_length)#Send terminal length zero command
+        time.sleep(.2)
+
+
+
+        """
+        Once a  connection is established:
+        1. send the shell input Commands
+        by looping the self.commands list
+        """
+        for x in commands:
+            channel.sendall(x+"\n")
+            time.sleep(.5)
+
+        time.sleep(3)#Time to wait to receive channel bytes
+
+        shell_output = channel.recv(9999).decode(encoding='utf-8') #Receive buffer output
+
+
+        
+
+        ssh.close()
+        return  shell_output
+        
+
 
 
 class ChannelClass(LoadDataToList):
@@ -166,36 +298,17 @@ class ChannelClass(LoadDataToList):
         self.date_time = datetime.datetime.now().strftime("%Y-%m-%d")
         self.username = username
         self.password = password
-        
+        self.single_host = single_host
 
-
-  
-
-        
-                
 
     
-    def SetUpCommands(self):
+    def HyperShell(self,host_ip):
 
-        """
-        Basic method to open commands file
-        allowing for more sophisticated method in the future
-        """
-        self.create_set_up(path='Setup\\Cisco_Commands.dat')
-
-        commands = self.load_data_source(path='Setup\\Cisco_Commands.dat')
-
-        return commands
-
-    
-
-    
-    
-    def MakeConnection(self,host_ip):
+        """Use this for looping large numbers of devices"""
        
         terminal_length = self.term_zero(device_id='Cisco')
         
-        commands = self.SetUpCommands()
+        commands = self.load_data_source(path='Setup\\Cisco_commands.dat')
 
         
         
@@ -212,8 +325,7 @@ class ChannelClass(LoadDataToList):
 
         channel.sendall(terminal_length)#Send terminal length zero command
         time.sleep(.2)
-
-        
+ 
         """
         Once a  connection is established:
         1. send the shell input Commands
@@ -229,6 +341,78 @@ class ChannelClass(LoadDataToList):
         ssh.close()
 
         return  shell_output
+        
+
+    
+    
+
+    def ProcessNodeData(self):
+    
+        connect = self.uni_shell(host_ip=self.single_host,command_set='Setup\\Cisco_trouble.dat',device_select='Cisco')
+
+        mac_address = self.find_mac_addresses(input_string=connect)
+
+        interface = self.find_mac_interfaces(input_string=connect)
+
+        host_name = self.find_host_name(device_id='Cisco_IOS',search=connect)
+
+        ipv4_address = self.find_ipv4(input_string=connect)
+        
+        print(connect)
+        print(mac_address,interface,host_name,ipv4_address)
+
+        return mac_address,interface,host_name,ipv4_address
+
+
+
+    
+
+    def DrawNodes(self):
+
+        mac_address,interface,host_name,ipv4_address= self.ProcessNodeData()
+
+
+        
+        G = nx.path_graph(0)
+        G.add_node(host_name)
+
+
+    
+    
+        for i in range (len(mac_address)):
+            G.add_edges_from([(mac_address[i], interface[i])])
+
+        
+        for i in range (len(interface)):
+            G.add_edges_from([(host_name, interface[i])])
+
+
+        for i in range (len(ipv4_address)):
+            G.add_edges_from([(mac_address[i], ipv4_address[i])])
+        
+        """
+        Set Colors:
+        Nodes = green
+        Edges = Blue
+        """
+        color_map = []
+
+        for node in G:
+            if node ==host_name:
+                color_map.append('green')
+            else:
+                color_map.append('blue')
+
+
+        random_pos = nx.random_layout(G, seed=42)
+        pos = nx.spring_layout(G, pos=random_pos)
+        plt.figure(3,figsize=(46,12)) 
+        plt.subplot(121)
+        nx.draw(G, node_color=color_map, with_labels=True)
+        #nx.draw(G, with_labels=True, font_weight='bold')
+        
+
+   
 
     
     
@@ -267,22 +451,33 @@ class ChannelClass(LoadDataToList):
         
         THREADS = ThreadPool(obj.count_cores)#Set the number of threads
         
-        SHELL_OUT = THREADS.map(self.MakeConnection, loop_hosts)
+        SHELL_OUT = THREADS.map(self.HyperShell, loop_hosts)
 
-     
         self.SaveToFile(SHELL_OUT)#Save output to file
 
 
         THREADS.close()
 
+        
 
 
-  
+    def main(self):
+        
+        #self.MultiThreading()
+        self.DrawNodes() 
+
+        
+
+        
+        
+              
 if __name__ == "__main__": 
-    username = 'cisco'#temp solution
+    single_host = '172.19.1.251'
+    username = 'cisco'#Enter network device username temp solution
     password = 'cisco' #temp solution 
     a = ChannelClass()
-    a.MultiThreading()
+    a.main()
+    
    
  
   
