@@ -1,4 +1,4 @@
-"""
+''"""
 Created on Mon Jan 11 20:08:27 2021
 #! Python 3.8
 @author: Francis Neequaye
@@ -108,6 +108,12 @@ class FormalAutoShellInterface(metaclass=abc.ABCMeta):
     def uni_shell(self, host_ip: list,command_set: str ):
         """Univeral SSH conection"""
         raise NotImplementedError
+
+    
+    @abc.abstractmethod
+    def command_sets(self, device_id: str,command_set: str ):
+        """Select deice type and automated commands to exexute"""
+        raise NotImplementedError
         
         
         
@@ -151,7 +157,7 @@ class LoadDataToList(FormalAutoShellInterface):
         
 
         """
-        For Cisco devices
+        For live Cisco devices
         __________________
         1. Search for the hostname string 
         2.Strip the user mode prompt (>,#)
@@ -200,7 +206,7 @@ class LoadDataToList(FormalAutoShellInterface):
    
         all_interfaces = []    
         
-        pat = r"^(interface (?P<intf_name>\S+))"
+        pat = re.compile("^(interface (?P<intf_name>\S+))")
         found_interfaces = re.finditer(pat,input_string,re.MULTILINE)
 
         for intf_part in found_interfaces:
@@ -214,7 +220,7 @@ class LoadDataToList(FormalAutoShellInterface):
     def find_ipv4(self, input_string: str ):
         """Search for ipv4"""
 
-        pat = r"\d\d?\d?\.\d\d?\d?\.\d\d?\d?\.\d\d?\d?"
+        pat = re.compile("\d\d?\d?\.\d\d?\d?\.\d\d?\d?\.\d\d?\d?")
         ipv4_address = re.findall(pat, input_string)
         return ipv4_address
 
@@ -223,7 +229,7 @@ class LoadDataToList(FormalAutoShellInterface):
     def find_mac_addresses(self, input_string: str ):
          """Search for Mac addrress"""
          
-         pat = r"[0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4}"
+         pat = re.compile("[0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4}")
          mac_address =  re.findall(pat, input_string)
          return mac_address
 
@@ -244,13 +250,12 @@ class LoadDataToList(FormalAutoShellInterface):
 
 
     
-    def uni_shell(self, host_ip: list,command_set: str,device_select: str ):
+    def uni_shell(self, host_ip: list,command_set: str,select_term_zero: str ):
         """Univeral SSH conection"""
         
-        terminal_length = self.term_zero(device_id=device_select)
-        commands = self.load_data_source(path=command_set)
-
+        terminal_length = self.term_zero(device_id=select_term_zero)
         
+
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -261,7 +266,7 @@ class LoadDataToList(FormalAutoShellInterface):
             print(host_ip,e.args)
             return
 
-        channel.sendall(terminal_length)#Send terminal length zero command
+        #channel.sendall(terminal_length)#Send terminal length zero command
         time.sleep(.2)
 
 
@@ -271,7 +276,7 @@ class LoadDataToList(FormalAutoShellInterface):
         1. send the shell input Commands
         by looping the self.commands list
         """
-        for x in commands:
+        for x in command_set:
             channel.sendall(x+"\n")
             time.sleep(.5)
 
@@ -283,6 +288,24 @@ class LoadDataToList(FormalAutoShellInterface):
 
         ssh.close()
         return  shell_output
+
+
+    
+    def command_sets(self, device_id: str,command_set: str ):
+        """Select deice type and automated commands to exexute"""
+
+        if device_id == 'Cisco_IOS':
+            if command_set == 'arp_table':
+                commands = ['enable','terminal length 0','cisco','show arp']
+
+                return commands
+
+
+            if command_set == 'cef_table':
+                commands = ['enable','terminal length 0','cisco','show ip cef']
+
+                return commands
+
         
 
 
@@ -344,85 +367,119 @@ class ChannelClass(LoadDataToList):
     
     
 
-    def ProcessNodeData(self):
-        
-        
-        hosts = ['172.19.1.251']
+    def SendCommands(self,selected_device,
+                     selected_commands,term_zero):
 
-        all_macs_address, all_interfaces, all_ipv4_address, all_host_names = [],[],[],[]
+        
+        commands = self.command_sets(device_id=selected_device,
+                                     command_set=selected_commands)
+
        
-       
-        for x in hosts:
-            connect = self.uni_shell(host_ip=x,command_set='Setup\\Cisco_trouble.dat',device_select='Cisco')
-            host_name = self.find_host_name(device_id='Cisco_IOS',search=str(connect))
-            mac_address = self.find_mac_addresses(input_string=str(connect))
-            interface = self.find_mac_interfaces(input_string=str(connect))
-            ipv4_address = self.find_ipv4(input_string=str(connect))
+        for x in self.single_host:
+            command_output = self.uni_shell(host_ip=x,command_set=commands,
+                                             select_term_zero=term_zero)
+
+        return command_output
+
+
+        
             
+    
+    def SortCommandOutPut(self,output_type):
+        
+        if output_type == 'cisco_arp':
+            
+            command_output = self.SendCommands('Cisco_IOS','arp_table','Cisco')#<---
+            
+            all_macs_address, all_interfaces, all_ipv4_address, all_host_names = [],[],[],[]
+            
+            host_name = self.find_host_name(device_id='Cisco_IOS',search=str(command_output))
+            mac_address = self.find_mac_addresses(input_string=str(command_output))
+            interface = self.find_mac_interfaces(input_string=str(command_output))
+            ipv4_address = self.find_ipv4(input_string=str(command_output))
             all_macs_address.append(mac_address)
             all_host_names.append(host_name)
             all_interfaces.append(interface)
             all_ipv4_address.append(ipv4_address)
             
-            
-        return all_host_names,all_macs_address,all_interfaces,all_ipv4_address 
-            
-            
+            return all_host_names,all_macs_address,all_interfaces,all_ipv4_address 
+        
+        else:
+            pass
+
 
         
+        if output_type =='cisco_cef':
 
-    
+            command_output = self.SendCommands('Cisco_IOS','cef_table','Cisco')#<---
 
-    def DrawNodes(self):
-
-        all_host_names,all_macs_address,all_interfaces,all_ipv4_address = self.ProcessNodeData()
-
-        mac_len = len(all_macs_address)
-
-
-        G=nx.Graph()
-
-        G.add_node(all_host_names[0])
-
-
-        for i in range (len(all_interfaces[0])):
-            G.add_edges_from([(all_host_names[0], all_interfaces[0][i])])
-
-
-        for i in range (len(all_macs_address[0])):
-            G.add_edges_from([(all_macs_address[0][i], all_interfaces[0][i])])
-
-
-        for i in range (len(all_macs_address[0])):
-            G.add_edges_from([(all_macs_address[0][i], all_ipv4_address[0][i])])
+            print(command_output)
 
             
-        """
-        #Set Colors:
-        #Nodes = green
-        #Edges = Blue
-        """
-        node_color_map = []
-        edge_color_map = ['Red']
+            
+    
+
+    def DrawArpTable(self,device_id):
+
+        if device_id=='Cisco_IOS':
+            all_host_names,all_macs_address,all_interfaces,all_ipv4_address = self.SortCommandOutPut('cisco_arp')
+    
+            
+            mac_len = len(all_macs_address)
+    
+    
+            G=nx.Graph()
+    
+            G.add_node(all_host_names[0])
+    
+    
+            for i in range (len(all_interfaces[0])):
+                G.add_edges_from([(all_host_names[0], all_interfaces[0][i])])
+    
+    
+            for i in range (len(all_macs_address[0])):
+                G.add_edges_from([(all_macs_address[0][i], all_interfaces[0][i])])
+    
+    
+            for i in range (len(all_macs_address[0])):
+                G.add_edges_from([(all_macs_address[0][i], all_ipv4_address[0][i])])
+
+            
+
+            
+            """
+            #Set Colors:
+            #Nodes = green
+            #Edges = Blue
+            """
+            node_color_map = []
+            edge_color_map = ['Red']
 
 
-        for node in G:
-            if node ==all_host_names[0]:
-                node_color_map.append('green')
+            for node in G:
+                if node ==all_host_names[0]:
+                    node_color_map.append('green')
 
-            else:
-                node_color_map.append('blue')
+                else:
+                    node_color_map.append('blue')
 
-        nx.edge_connectivity(G)
+            nx.edge_connectivity(G)
+
+            random_pos = nx.random_layout(G, seed=42)
+            pos = nx.spring_layout(G, pos=random_pos)
+            plt.figure(3,figsize=(46,12)) 
+            plt.subplot(121)
+            nx.draw(G, node_color=node_color_map,edge_color=edge_color_map, with_labels=True)
 
 
     
 
-        random_pos = nx.random_layout(G, seed=42)
-        pos = nx.spring_layout(G, pos=random_pos)
-        plt.figure(3,figsize=(46,12)) 
-        plt.subplot(121)
-        nx.draw(G, node_color=node_color_map,edge_color=edge_color_map, with_labels=True)
+    def DrawCefTable(self):
+
+         output = self.SortCommandOutPut('cisco_cef')
+
+         print(output)
+
 
 
 
@@ -472,14 +529,19 @@ class ChannelClass(LoadDataToList):
 
         THREADS.close()
 
+
+
         
 
 
     def main(self):
         
         #self.MultiThreading()
-        self.DrawNodes()
-        #self.ProcessNodeData() 
+        self.DrawArpTable('Cisco_IOS')
+        #self.SendCommands('Cisco_IOS')
+        #self.test() 
+        #self.SortCommandOutPut('cisco_arp')
+        #self.DrawCefTable()
 
         
 
