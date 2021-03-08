@@ -26,7 +26,8 @@ import getpass
 import os
 import networkx as nx
 import matplotlib.pyplot as plt
-
+import pandas as pd
+from io import StringIO 
 
 
 start = time.time()#Temp timing
@@ -114,11 +115,11 @@ class FormalAutoShellInterface(metaclass=abc.ABCMeta):
     def command_sets(self, device_id: str,command_set: str ):
         """Select deice type and automated commands to exexute"""
         raise NotImplementedError
-        
-        
-        
 
+   
 
+        
+        
 
 class LoadDataToList(FormalAutoShellInterface):
  
@@ -206,7 +207,7 @@ class LoadDataToList(FormalAutoShellInterface):
    
         all_interfaces = []    
         
-        pat = re.compile("^(interface (?P<intf_name>\S+))")
+        pat = r"(^(interface (?P<intf_name>\S+))"
         found_interfaces = re.finditer(pat,input_string,re.MULTILINE)
 
         for intf_part in found_interfaces:
@@ -220,7 +221,7 @@ class LoadDataToList(FormalAutoShellInterface):
     def find_ipv4(self, input_string: str ):
         """Search for ipv4"""
 
-        pat = re.compile("\d\d?\d?\.\d\d?\d?\.\d\d?\d?\.\d\d?\d?")
+        pat = r"(\d\d?\d?\.\d\d?\d?\.\d\d?\d?\.\d\d?\d?)"
         ipv4_address = re.findall(pat, input_string)
         return ipv4_address
 
@@ -229,7 +230,7 @@ class LoadDataToList(FormalAutoShellInterface):
     def find_mac_addresses(self, input_string: str ):
          """Search for Mac addrress"""
          
-         pat = re.compile("[0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4}")
+         pat = r"([0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4})"
          mac_address =  re.findall(pat, input_string)
          return mac_address
 
@@ -253,7 +254,7 @@ class LoadDataToList(FormalAutoShellInterface):
     def uni_shell(self, host_ip: list,command_set: str,select_term_zero: str ):
         """Univeral SSH conection"""
         
-        terminal_length = self.term_zero(device_id=select_term_zero)
+        #terminal_length = self.term_zero(device_id=select_term_zero)
         
 
         try:
@@ -296,15 +297,18 @@ class LoadDataToList(FormalAutoShellInterface):
 
         if device_id == 'Cisco_IOS':
             if command_set == 'arp_table':
-                commands = ['enable','terminal length 0','cisco','show arp']
+                commands = ['enable','terminal length 0','show arp']
 
                 return commands
 
 
             if command_set == 'cef_table':
-                commands = ['enable','terminal length 0','cisco','show ip cef']
+                commands = ['enable','terminal length 0','show ip cef']
 
                 return commands
+
+            
+         
 
         
 
@@ -379,6 +383,8 @@ class ChannelClass(LoadDataToList):
             command_output = self.uni_shell(host_ip=x,command_set=commands,
                                              select_term_zero=term_zero)
 
+        
+  
         return command_output
 
 
@@ -386,6 +392,10 @@ class ChannelClass(LoadDataToList):
             
     
     def SortCommandOutPut(self,output_type):
+
+        """
+        Selects command set to send to remote devices
+        """
         
         if output_type == 'cisco_arp':
             
@@ -408,12 +418,15 @@ class ChannelClass(LoadDataToList):
             pass
 
 
-        
+    
         if output_type =='cisco_cef':
 
             command_output = self.SendCommands('Cisco_IOS','cef_table','Cisco')#<---
 
-            print(command_output)
+            
+
+
+            return command_output
 
             
             
@@ -476,10 +489,73 @@ class ChannelClass(LoadDataToList):
 
     def DrawCefTable(self):
 
-         output = self.SortCommandOutPut('cisco_cef')
+        #pat = r"(\d\d?\d?\.\d\d?\d?\.\d\d?\d?\.\d\d?\d?)(.*)(\n)"
+        pat = r"(.*)(receive)(.*)"
 
-         print(output)
+        command_output = self.SortCommandOutPut('cisco_cef')
+          
+        ip_column = re.findall(pat,
+                               #r"( .*\n)*"
+                               #r"( transport input telnet\n)",
+                               command_output,
+                               re.MULTILINE)
 
+
+        #print(ip_column)
+
+        not_active_routes = ['drop']
+
+        p =  re.compile( '|'.join(not_active_routes))
+
+
+        list_of_lists = [list(elem) for elem in ip_column]
+
+        print(list_of_lists)
+        
+
+
+       
+
+
+                   
+                     
+
+
+        
+
+        
+
+
+   
+
+        
+
+        
+
+
+
+         
+       
+         
+         # command_output = self.SortCommandOutPut('cisco_cef')
+
+         #new = StringIO(command_output) 
+
+         #print(new)
+
+         #df = pd.read_csv(new, sep ="\n") 
+
+         #print(df.columns)
+
+         
+
+
+
+        
+
+
+
+         
 
 
 
@@ -537,7 +613,10 @@ class ChannelClass(LoadDataToList):
     def main(self):
         
         #self.MultiThreading()
-        self.DrawArpTable('Cisco_IOS')
+        
+        #self.DrawArpTable('Cisco_IOS')
+        self.DrawCefTable()
+        
         #self.SendCommands('Cisco_IOS')
         #self.test() 
         #self.SortCommandOutPut('cisco_arp')
